@@ -299,3 +299,23 @@ test_that("*_(all,at) handle utf-8 names (#2967)", {
     expect_equal(res, name)
   })
 })
+
+test_that("summarise_at with multiple columns AND unnamed functions works (#4119)", {
+  res <- storms %>%
+    summarise_at(vars(wind, pressure), list(mean, median))
+
+  expect_equal(ncol(res), 4L)
+  expect_equal(names(res), c("wind_<fn>_1", "pressure_<fn>_1", "wind_<fn>_2", "pressure_<fn>_2"))
+})
+
+test_that("mutate_at with multiple columns AND unnamed functions works (#4119)", {
+  res <- storms %>%
+    mutate_at(vars(wind, pressure), list(mean, median))
+
+  expect_equal(ncol(res), ncol(storms) + 4L)
+  expect_equal(
+    names(res),
+    c(names(storms), c("wind_<fn>_1", "pressure_<fn>_1", "wind_<fn>_2", "pressure_<fn>_2"))
+  )
+})
+
