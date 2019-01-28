@@ -3,32 +3,76 @@
 
 //' Cumulativate versions of any, all, and mean
 //'
-//' dplyr adds `cumall()`, `cumany()`, and `cummean()` to complete
-//' R's set of cumulate functions to match the aggregation functions available
-//' in most databases
+//' dplyr provides `cumall()`, `cumany()`, and `cummean()` to complete R's set
+//' of cumulative functions.
+//'
+//' @section Cumulative logical functions:
+//'
+//' These are particularly useful in conjunction with `filter()`:
+//'
+//' * `cumall(x)`: all cases until the first `FALSE`.
+//' * `cumall(!x)`: all cases until the first `TRUE`.
+//' * `cumany(x)`: all cases after the first `TRUE`.
+//' * `cumany(!x)`: all cases after the first `FALSE`.
 //'
 //' @param x For `cumall()` and `cumany()`, a logical vector; for
-//'   `cummean()` an integer or numeric vector
+//'   `cummean()` an integer or numeric vector.
+//' @return A vector the same length as `x`.
 //' @export
+//' @examples
+//' # `cummean()` returns a numeric/integer vector of the same length
+//' # as the input vector.
+//' x <- c(1, 3, 5, 2, 2)
+//' cummean(x)
+//' cumsum(x) / seq_along(x)
+//'
+//' # `cumall()` and `cumany()` return logicals
+//' cumall(x < 5)
+//' cumany(x == 3)
+//'
+//' # `cumall()` vs. `cumany()`
+//' df <- data.frame(
+//'   date = as.Date("2020-01-01") + 0:6,
+//'   balance = c(100, 50, 25, -25, -50, 30, 120)
+//' )
+//' # all rows after first overdraft
+//' df %>% filter(cumany(balance < 0))
+//' # all rows until first overdraft
+//' df %>% filter(cumall(!(balance < 0)))
 // [[Rcpp::export]]
 LogicalVector cumall(LogicalVector x) {
   int n = x.length();
-  LogicalVector out(n, FALSE);
-  int current  = TRUE;
-  int previous = TRUE;
+  LogicalVector out(n, TRUE);
+  int* p_x = x.begin();
+  int* p_out = out.begin();
 
-  for (int i = 0; i < n; i++) {
-    current = x[i];
-    if (current == FALSE) {
+  // nothing to do as long as x[i] is TRUE
+  int i = 0 ;
+  for (; i < n; i++, ++p_x, ++p_out) {
+    if (*p_x != TRUE) {
       break;
-    } else if (current == NA_LOGICAL) {
-      out[i] = NA_LOGICAL;
-      previous = NA_LOGICAL;
-    } else {
-      out[i] = previous;
     }
   }
+  if (i == n) {
+    return out;
+  }
 
+  // set to NA as long as x[i] is NA or TRUE
+  for (; i < n; i++, ++p_x, ++p_out) {
+    if (*p_x == FALSE) {
+      break;
+    }
+    *p_out = NA_LOGICAL;
+  }
+
+  if (i == n) {
+    return out;
+  }
+
+  // then if we are here, the rest is FALSE
+  for (; i < n; i++, ++p_out) {
+    *p_out = FALSE;
+  }
   return out;
 }
 
@@ -37,23 +81,39 @@ LogicalVector cumall(LogicalVector x) {
 // [[Rcpp::export]]
 LogicalVector cumany(LogicalVector x) {
   int n = x.length();
-  LogicalVector out(n, TRUE);
-  int current  = FALSE;
-  int previous = FALSE;
+  LogicalVector out(n, FALSE);
+  int* p_x = x.begin();
+  int* p_out = out.begin();
 
-  for (int i = 0; i < n; i++) {
-    current = x[i];
-    if (current == FALSE) {
-      out[i] = previous;
-    } else if (current == NA_LOGICAL) {
-      out[i]   = NA_LOGICAL;
-      previous = NA_LOGICAL;
-    } else {
+  // nothing to do as long as x[i] is FALSE
+  int i = 0 ;
+  for (; i < n; i++, ++p_x, ++p_out) {
+    if (*p_x != FALSE) {
       break;
     }
   }
+  if (i == n) {
+    return out;
+  }
 
+  // set to NA as long as x[i] is NA or FALSE
+  for (; i < n; i++, ++p_x, ++p_out) {
+    if (*p_x == TRUE) {
+      break;
+    }
+    *p_out = NA_LOGICAL;
+  }
+
+  if (i == n) {
+    return out;
+  }
+
+  // then if we are here, the rest is TRUE
+  for (; i < n; i++, ++p_out) {
+    *p_out = TRUE;
+  }
   return out;
+
 }
 
 //' @export

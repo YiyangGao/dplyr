@@ -320,3 +320,10 @@ test_that("mutate_at with multiple columns AND unnamed functions works (#4119)",
     c(names(storms), c("wind_fn..1", "pressure_fn..1", "wind_fn..2", "pressure_fn..2"))
   )
 })
+
+test_that("mutate_all() handles non syntactic names (#4094)", {
+  tbl <- tibble(`..1` = "a")
+  res <- mutate_all(tbl, toupper)
+  expect_equal(names(tbl), names(res))
+  expect_equal(res[["..1"]], "A")
+})
